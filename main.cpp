@@ -1,20 +1,15 @@
-#include <iostream>
-#include <thread>
-#include <chrono>
-#include <vector>
-#include <memory>
-#include <stdexcept>
-#include <postgresql/libpq-fe.h>
-#include <nlohmann/json.hpp>
 #include <crow.h>
-#include "PlainRpcDispatcher.h"
+#include <crow/middlewares/cors.h>
+#include <nlohmann/json.hpp>
+#include <iostream>
+#include <postgresql/libpq-fe.h>
 #include "LocationService.h"
-#include <cstdlib>
-#include <set>
+#include "PlainRpcDispatcher.h"
 
 using json = nlohmann::json;
 using namespace std;
 
+// Database connection class
 class DatabaseConnection {
 private:
     PGconn* conn_;
@@ -29,8 +24,6 @@ public:
         }
     }
     ~DatabaseConnection() { if (conn_) PQfinish(conn_); }
-    DatabaseConnection(const DatabaseConnection&) = delete;
-    DatabaseConnection& operator=(const DatabaseConnection&) = delete;
     PGconn* get() const { return conn_; }
     bool isValid() const { return conn_ && PQstatus(conn_) == CONNECTION_OK; }
 };
@@ -120,41 +113,43 @@ json SearchLocations(const json& params) {
 
 int main() {
     try {
+        // Initialize database connection
         global_conninfo =
             "postgresql://postgres.vxqsqaysrpxliofqxjyu:the-plus-maps-password"
             "@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require";
-
         ensureDbConnection();
 
+        // Set up RPC dispatcher
         auto dispatcher = make_shared<PlainRpcDispatcher>();
         dispatcher->registerMethod("getTopLocations", GetTopLocations);
         dispatcher->registerMethod("getLocationById", GetLocationById);
         dispatcher->registerMethod("searchLocations", SearchLocations);
 
-        crow::SimpleApp app;
+        // Configure Crow app with CORS
+        crow::App<crow::CORSHandler> app;
 
-        // CORS middleware
-        CROW_ROUTE(app, "/")
-        .methods("OPTIONS"_method)
-        ([](const crow::request& req, crow::response& res){
-            res.add_header("Access-Control-Allow-Origin", "*");
-            res.add_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            res.add_header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-            res.add_header("Access-Control-Max-Age", "86400");
-            res.end();
-        });
+        // Customize CORS
+        auto& cors = app.get_middleware<crow::CORSHandler>();
+        
+        // Hardcoded allowed origins (can be overridden by ENV)
+        cors
+            .global()
+            .headers("Content-Type", "Authorization")
+            .methods("POST"_method, "GET"_method, "OPTIONS"_method)
+            .origin("*"); // For development, restrict in production
 
-        CROW_ROUTE(app, "/health")
-        ([](){
+        // Health check endpoint
+        CROW_ROUTE(app, "/health")([](){
             return "OK";
         });
 
+        // Main RPC endpoint
         CROW_ROUTE(app, "/rpc")
-        .methods("POST"_method)
+            .methods("POST"_method)
         ([&dispatcher](const crow::request& req){
             crow::response res;
-            res.add_header("Content-Type", "application/json");
-            
+            res.set_header("Content-Type", "application/json");
+
             if (!ensureDbConnection()) {
                 res.code = 503;
                 res.body = json{{"success", false}, {"error", "Database unavailable"}}.dump();
@@ -177,13 +172,13 @@ int main() {
                 if (!userid.empty()) {
                     if (isUserBlocked(db_connection->get(), userid)) {
                         res.code = 429;
-                        res.body = json{{"success", false}, {"error", "You have exceeded the rate limit"}}.dump();
+                        res.body = json{{"success", false}, {"error", "Rate limit exceeded"}}.dump();
                         return res;
                     }
                     logUserRequest(db_connection->get(), userid);
                     if (isUserBlocked(db_connection->get(), userid)) {
                         res.code = 429;
-                        res.body = json{{"success", false}, {"error", "You have exceeded the rate limit"}}.dump();
+                        res.body = json{{"success", false}, {"error", "Rate limit exceeded"}}.dump();
                         return res;
                     }
                 }
@@ -195,8 +190,7 @@ int main() {
             return res;
         });
 
-        // Set CORS headers for all responses
-        app.loglevel(crow::LogLevel::Warning);
+        // Start server
         app.port(8080).multithreaded().run();
 
     } catch (const exception& e) {

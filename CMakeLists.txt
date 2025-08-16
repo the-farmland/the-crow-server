@@ -20,15 +20,14 @@ if(NOT nlohmann_json_FOUND)
     FetchContent_MakeAvailable(nlohmann_json)
 endif()
 
-# NEW: Find Crow (fall back to download if necessary)
+# Find Crow (download if necessary)
 include(FetchContent)
 FetchContent_Declare(
     crow
     GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
-    GIT_TAG v1.1.0
+    GIT_TAG v1.0+5
 )
 FetchContent_MakeAvailable(crow)
-
 
 # Find PostgreSQL libpq headers and library
 find_library(LIBPQ_LIBRARY NAMES pq PATHS /usr/lib/x86_64-linux-gnu /usr/lib /usr/local/lib)
@@ -40,18 +39,19 @@ endif()
 
 # Add project directories to the include path
 include_directories(
+    . # Root directory
     ${Boost_INCLUDE_DIRS}
     ${LIBPQ_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
 )
 
-# Executable definition now includes LocationService.cpp
+# Executable definition
 add_executable(ThePlusTVServer
     main.cpp
     LocationService.cpp
 )
 
-# Link libraries, including OpenSSL, PostgreSQL, and Crow
+# Link libraries, including OpenSSL and PostgreSQL
 target_link_libraries(ThePlusTVServer PRIVATE
     Threads::Threads
     Boost::system
@@ -60,5 +60,5 @@ target_link_libraries(ThePlusTVServer PRIVATE
     ${LIBPQ_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
-    crow
+    crow::crow
 )

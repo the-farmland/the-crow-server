@@ -1,6 +1,6 @@
 FROM ubuntu:22.04 AS builder
 
-# Install all required dependencies including PostgreSQL dev libraries, OpenSSL, and Crow dependencies
+# Install all required dependencies
 RUN apt-get update && \
     apt-get install -y \
         build-essential \
@@ -25,7 +25,7 @@ RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --config Release
 
 FROM ubuntu:22.04
-# Install runtime dependencies including PostgreSQL client library, OpenSSL
+# Install runtime dependencies
 RUN apt-get update && \
     apt-get install -y \
         libboost-system1.74.0 \

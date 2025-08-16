@@ -32,10 +32,14 @@ endif()
 include(FetchContent)
 FetchContent_Declare(
     crow
-    GIT_REPOSITORY https://github.com/CrowCpp/crow.git
+    GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
     GIT_TAG v1.0+5
 )
-FetchContent_MakeAvailable(crow)
+FetchContent_GetProperties(crow)
+if(NOT crow_POPULATED)
+    FetchContent_Populate(crow)
+    add_subdirectory(${crow_SOURCE_DIR} ${crow_BINARY_DIR})
+endif()
 
 # Add project directories to the include path
 include_directories(
@@ -43,6 +47,7 @@ include_directories(
     ${Boost_INCLUDE_DIRS}
     ${LIBPQ_INCLUDE_DIR}
     ${OPENSSL_INCLUDE_DIR}
+    ${crow_SOURCE_DIR}/include
 )
 
 # Executable definition
@@ -60,5 +65,5 @@ target_link_libraries(ThePlusTVServer PRIVATE
     ${LIBPQ_LIBRARY}
     OpenSSL::SSL
     OpenSSL::Crypto
-    crow
+    Crow
 )

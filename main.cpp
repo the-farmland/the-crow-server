@@ -258,7 +258,9 @@ json SearchLocations(const json& params) {
 int main() {
     try {
         // Initialize database
-        global_conninfo = "your-postgres-connection-string";
+        global_conninfo =           
+            "postgresql://postgres.vxqsqaysrpxliofqxjyu:the-plus-maps-password"
+            "@aws-0-us-east-2.pooler.supabase.com:5432/postgres?sslmode=require";
         ensureDbConnection();
 
         // Set up RPC methods

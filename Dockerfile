@@ -1,6 +1,6 @@
-
 FROM ubuntu:22.04 AS builder
-# Install all required dependencies including PostgreSQL dev libraries, OpenSSL
+
+# Install all required dependencies including PostgreSQL dev libraries, OpenSSL, and Crow dependencies
 RUN apt-get update && \
     apt-get install -y \
         build-essential \
@@ -9,14 +9,17 @@ RUN apt-get update && \
         libboost-system-dev \
         libboost-thread-dev \
         libboost-random-dev \
+        libboost-date-time-dev \
         libwebsocketpp-dev \
         nlohmann-json3-dev \
         libpq-dev \
         libssl-dev \
         wget \
     && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY . .
+
 # Configure and build the project
 RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build --config Release
@@ -27,11 +30,14 @@ RUN apt-get update && \
     apt-get install -y \
         libboost-system1.74.0 \
         libboost-thread1.74.0 \
+        libboost-date-time1.74.0 \
         libpq5 \
         libssl3 \
     && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 COPY --from=builder /app/build/ThePlusTVServer .
+
 # Set default CORS allowed origins
 ENV ALLOWED_ORIGINS="https://the-super-sweet-two.vercel.app,http://localhost:3000"
 EXPOSE 8080

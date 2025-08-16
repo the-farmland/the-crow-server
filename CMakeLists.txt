@@ -25,7 +25,7 @@ include(FetchContent)
 FetchContent_Declare(
     crow
     GIT_REPOSITORY https://github.com/CrowCpp/Crow.git
-    GIT_TAG v1.0.8
+    GIT_TAG v1.1.0
 )
 FetchContent_MakeAvailable(crow)
 
